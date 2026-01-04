@@ -4,7 +4,6 @@ project(Editor)
 
 #TODO: if Visual Studio do this, else don't worry about it
 set(CMAKE_SUPPRESS_REGENERATION true)
-VS_STARTUP_PROJECT(Editor)
 
 add_executable(Editor)
 
