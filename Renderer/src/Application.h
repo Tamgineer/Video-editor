@@ -79,7 +79,7 @@ namespace std {
 
 class Application {
 public:
-	Application(int w, int h) : window{w, h} {
+	Application(int w, int h) : window{ w, h } {
 	}
 	~Application() { /*cleanup();*/ }
 
@@ -106,7 +106,7 @@ private:
 
 	VkInstance instance{ VK_NULL_HANDLE };
 	VkDebugUtilsMessengerEXT debugMessenger;
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
 	VkDevice device;
 	VkQueue graphicsQueue;
 
@@ -189,9 +189,9 @@ private:
 
 	//MSAA
 	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
-	VkImage colorImage = VK_NULL_HANDLE;
-	VkDeviceMemory colorImageMemory = VK_NULL_HANDLE;
-	VkImageView colorImageView = VK_NULL_HANDLE;
+	VkImage colorImage{ VK_NULL_HANDLE };
+	VkDeviceMemory colorImageMemory{ VK_NULL_HANDLE };
+	VkImageView colorImageView{ VK_NULL_HANDLE };
 
 	//ImGUI
 	VkDescriptorPool imguiDescriptorPool;
@@ -241,6 +241,7 @@ private:
 		createTextureImageView();
 		createTextureSampler();
 		loadModel();
+		//AddRect();
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffers();
@@ -361,6 +362,8 @@ private:
 	}
 
 	void loadModel();
+
+	void AddRect();
 
 	void createDepthResources() {
 		VkFormat depthFormat = findDepthFormat();
@@ -1202,7 +1205,7 @@ private:
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+			if (availableFormat.format == VK_FORMAT_R8G8B8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				return availableFormat;
 			}
 		}
@@ -1469,7 +1472,7 @@ private:
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "No Engine";
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_0;
+		appInfo.apiVersion = VK_API_VERSION_1_3;
 
 		VkInstanceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

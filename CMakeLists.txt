@@ -26,8 +26,8 @@ target_sources(Editor PUBLIC
 
 target_include_directories(Editor 
 	PRIVATE	
-	C:/VulkanSDK/1.3.268.0/Include
-	C:/Libraries/glfw-3.3.9.bin.WIN64/include
+	C:/VulkanSDK/1.4.357.0/Include
+	C:/Libraries/glfw-3.5.1.bin.WIN64/include
 	C:/Libraries/glm
 	C:/Libraries/tinyObjLoader
 	C:/Libraries/stb
@@ -35,8 +35,8 @@ target_include_directories(Editor
 )
 
 target_link_directories(Editor PUBLIC
-	C:/VulkanSDK/1.3.268.0/Lib
-	C:/Libraries/glfw-3.3.9.bin.WIN64/lib-vc2022
+	C:/VulkanSDK/1.4.357.0/Lib
+	C:/Libraries/glfw-3.5.1.bin.WIN64/lib-vc2026
 )
 
 target_link_libraries(Editor glfw3 vulkan-1)

@@ -23023,7 +23023,9 @@ void ImGui::DebugNodeDrawList(ImGuiWindow* window, ImGuiViewportP* viewport, con
             total_area += ImTriangleArea(triangle[0], triangle[1], triangle[2]);
         }
 
-        // Display vertex information summary. Hover to get all triangles drawn in wire-frame
+        // Display 
+        // 
+        // information summary. Hover to get all triangles drawn in wire-frame
         ImFormatString(buf, IM_COUNTOF(buf), "Mesh: ElemCount: %d, VtxOffset: +%d, IdxOffset: +%d, Area: ~%0.f px", pcmd->ElemCount, pcmd->VtxOffset, pcmd->IdxOffset, total_area);
         Selectable(buf);
         if (IsItemHovered() && fg_draw_list)

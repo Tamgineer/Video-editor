@@ -1,11 +1,10 @@
-#include "Application.h"
-
+#define NOMINMAX
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include <tinyObjLoader.h>
-
+#include <tiny_obj_loader.h>
+#include "Application.h"
 
 void Application::initImGui() {
 	VkDescriptorPoolSize pool_sizes[] =
@@ -55,7 +54,7 @@ void Application::initImGui() {
 	info.Instance = instance;
 	info.PhysicalDevice = physicalDevice;
 	info.Device = device;
-	//info.QueueFamily = findQueueFamilies(physicalDevice).graphicsFamily();
+	//info.QueueFamily = ;
 	info.Queue = graphicsQueue;
 	//info.PipelineCache = g_PipelineCache;
 	info.DescriptorPool = imguiDescriptorPool;
@@ -71,46 +70,67 @@ void Application::initImGui() {
 }
 
 void Application::loadModel() {
-	{
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn;
-		std::string err;
+	
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn;
+	std::string err;
 
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
-			throw std::runtime_error(err);
-		}
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+		throw std::runtime_error(err);
+	}
 
-		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+	std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
-		for (const auto& shape : shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				Vertex vertex{};
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			Vertex vertex{};
 
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
 
-				vertex.texCoord = {
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
 
-				vertex.color = { 1.0f, 1.0f, 1.0f };
+			vertex.color = { 1.0f, 1.0f, 1.0f };
 
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
-				}
-
-				indices.push_back(uniqueVertices[vertex]);
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
 			}
+
+			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
+	
 }
+
+void Application::AddRect() {
+	uint32_t baseIndex = static_cast<uint32_t>(vertices.size());
+
+	std::vector<Vertex> planeVertices = {
+		{{-2.0f, 0.5f, -2.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+		{{ 2.0f, 0.5f, -2.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+		{{ 2.0f, 0.5f,  2.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-2.0f, 0.5f,  2.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+	};
+
+	vertices.insert(vertices.end(), planeVertices.begin(), planeVertices.end());
+
+	std::vector<uint32_t> planeIndices = {
+		baseIndex + 0, baseIndex + 1, baseIndex + 2,
+		baseIndex + 2, baseIndex + 3, baseIndex + 0
+	};
+
+	indices.insert(indices.end(), planeIndices.begin(), planeIndices.end());
+}
+
 #undef max
 void Application::createTextureImage() {
 		int texWidth, texHeight, texChannels;
@@ -244,6 +264,28 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("New", "Ctrl+N")) {}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {} // Disabled item
+			ImGui::Separator();
+			if (ImGui::MenuItem("Cut", "Ctrl+X")) {}
+			if (ImGui::MenuItem("Copy", "Ctrl+C")) {}
+			if (ImGui::MenuItem("Paste", "Ctrl+V")) {}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+
+	//ImGui::DockSpaceOverViewport();
+	//ImGui::DockSpace(ImGui::GetID("Dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
+	//ImGui::DockSpace(,,);
+	
 	ImGui::Begin("Hello ImGUI");
 	ImGui::SliderFloat("Speed", &slider, 0.1f, 360.0f);
 	ImGui::End();
