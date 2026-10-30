@@ -47,4 +47,6 @@ target_link_libraries(Editor glfw3 vulkan-1)
 
 target_sources(Core PUBLIC
 	Core/src/Main.cpp
+	Core/src/ITrack.cpp
+	Core/src/ITrack.h
 )
