@@ -16,8 +16,7 @@ A video editor that aims to be relatively lightweight.
 4. run `./build.bat`
 5. open shaders and edit `compile.bat` to make sure the batch file points to the `glslc.exe` compiler before running the batch file.
 6. open the build folder and open `Editor.slnx`.
-7. Delete `ALL_BUILD` and press `CTRL+B` to build the project. Alternatively, set the Editor Project as the startup project.
-8. Finally run the build to check if it works.
+7. Finally run the build to check if it works.
 
 ## Roadmap
  - [x] Set up project

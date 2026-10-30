@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(Editor)
+project(VideoEditor)
 
 #TODO: if Visual Studio do this, else don't worry about it
 set(CMAKE_SUPPRESS_REGENERATION true)
 
 add_executable(Editor)
+
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT Editor)
 
 #TODO: later on turn core into a library
 add_executable(Core)
