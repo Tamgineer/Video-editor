@@ -1,27 +1,28 @@
 #pragma once
+#include <string>
 class ITrack
 {
 public:
+	std::string Name{};
+	int WIDTH{};
+	int HEIGHT{};
+	double DURATION{};
+	double s_timestamp{};
+	double e_timestamp{};
+	double fps{};
 
-	int WIDTH;
-	int HEIGHT;
-	double DURATION;
-	double s_timestamp;
-	double e_timestamp;
-	double fps;
-
-	ITrack();
+	ITrack(std::string name) : Name(name) {}
 
 	//this is a dummy function, in the future
 	//we'll make it return an image for our frame
 	//NB: Oh and make sure it's virtual
 	void Display() {
 
-	};
+	}
 
 	void Split() {
 		//TODO:: implement
-	};
+	}
 private:
 };
 

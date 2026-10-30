@@ -49,4 +49,6 @@ target_sources(Core PUBLIC
 	Core/src/Main.cpp
 	Core/src/ITrack.cpp
 	Core/src/ITrack.h
+	Core/src/Project.h
+	Core/src/NotImplemented.h
 )
