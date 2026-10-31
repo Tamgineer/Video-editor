@@ -86,6 +86,9 @@ public:
 	void run() {
 		initVulkan();
 		initImGui();
+
+		ImGuiImageID = ImGui_ImplVulkan_AddTexture(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
 		mainLoop();
 		cleanup();
 	}
@@ -177,6 +180,8 @@ private:
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+
+	VkDescriptorSet ImGuiImageID;
 
 	//Depth buffer
 	VkImage depthImage;

@@ -25,7 +25,7 @@ void Application::initImGui() {
 	VkDescriptorPoolCreateInfo pool_info{};
 	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	pool_info.maxSets = 1000;
+	pool_info.maxSets = 1000 * (uint32_t)IM_ARRAYSIZE(pool_sizes);
 	pool_info.poolSizeCount = (uint32_t)std::size(pool_sizes);
 	pool_info.pPoolSizes = pool_sizes;
 
@@ -58,8 +58,8 @@ void Application::initImGui() {
 	info.Queue = graphicsQueue;
 	//info.PipelineCache = g_PipelineCache;
 	info.DescriptorPool = imguiDescriptorPool;
-	info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
-	info.ImageCount = MAX_FRAMES_IN_FLIGHT;
+	info.MinImageCount = 2;
+	info.ImageCount = swapChainImages.size();
 	//info.Allocator = g_Allocator;
 	info.PipelineInfoMain.RenderPass = renderPass;
 	info.PipelineInfoMain.Subpass = 0;
@@ -288,6 +288,10 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 	
 	ImGui::Begin("Hello ImGUI");
 	ImGui::SliderFloat("Speed", &slider, 0.1f, 360.0f);
+	ImGui::End();
+
+	ImGui::Begin("Images");
+	ImGui::Image((ImTextureID)ImGuiImageID, ImVec2(1024, 1024));
 	ImGui::End();
 
 	// Rendering
