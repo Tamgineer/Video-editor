@@ -4,8 +4,17 @@ A video editor that aims to be relatively lightweight.
 
 **Note:** This project is subject to change drastically as of now whilst I take time in fully realising the project.
 
-## How to build (if you want to build it for some reason)
+## How to build
 ### VS2026
+
+**You will need the following:**
+- GLFW3
+- Vulkan
+- GLM
+- TinyObjLoader
+- stb
+- ffmpeg
+
 1. git clone the repository onto the folder
 2. Open `CMakeList.txt` and make sure that the following is edited for the project to build properly
   a. line 29, to point to the Vulkan include folder
@@ -16,12 +25,13 @@ A video editor that aims to be relatively lightweight.
 4. run `./build.bat`
 5. open shaders and edit `compile.bat` to make sure the batch file points to the `glslc.exe` compiler before running the batch file.
 6. open the build folder and open `Editor.slnx`.
-7. Finally run the build to check if it works.
+7. Since for the time being Core makes an executable, make sure to copy all the DLL files from ffmpeg /bin folder onto the directory the executable will be located.
+8. Finally run the build to check if it works.
 
 ## Roadmap
  - [x] Set up project
  - [x] Create CMakeList
- - [ ] Incorporate FFMPEG into project
+ - [x] Incorporate FFMPEG into project
  - [ ] Demonstrate videos being played.
  - [ ] Design a low fidelity page for the software.
 
@@ -31,7 +41,7 @@ Here are the things I need the video editor to be able to do
  - [ ] Output a video
  - [ ] Play a video ontop of a video
  - [ ] Play audio
- - [ ] Export a video
+ - [x] Export a video
  - [ ] Render text
  - [ ] Add transitions
  - [ ] Cut a video

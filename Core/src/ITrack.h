@@ -36,4 +36,5 @@ Things to consider:
 - Tracks store it's beginning and ending timestamps.
 - Tracks store information about FPS.
 - Tracks can be attached to a transition
+- Tracks can have a visual effect?
 */

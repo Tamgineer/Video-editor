@@ -54,3 +54,13 @@ target_sources(Core PUBLIC
 	Core/src/Project.h
 	Core/src/NotImplemented.h
 )
+
+target_include_directories(Core PRIVATE
+	C:/Libraries/ffmpeg-8.0.1-full_build-shared/include
+)
+
+target_link_directories(Core PUBLIC
+	C:/Libraries/ffmpeg-8.0.1-full_build-shared/lib/
+)
+
+target_link_libraries(Core avcodec avutil avformat swscale)
