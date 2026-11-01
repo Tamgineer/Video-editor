@@ -29,6 +29,7 @@ target_sources(Editor PUBLIC
 	Editor/src/Renderer/imgui_impl_glfw.cpp	
 	Editor/src/Renderer/Window.h
 	Editor/src/Renderer/Application.h
+	Editor/src/Renderer/Vertex.h
 )
 
 target_include_directories(Editor PRIVATE

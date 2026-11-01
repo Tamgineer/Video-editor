@@ -12,6 +12,7 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include "Window.h"
+#include "Vertex.h"
 
 #include <iostream>
 #include <vector>
@@ -25,61 +26,9 @@
 #include <fstream>
 #include <unordered_map>
 
-
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return bindingDescription;
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-		attributeDescriptions[2].binding = 0;
-		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-		return attributeDescriptions;
-	}
-
-	bool operator==(const Vertex& other) const {
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	}
-};
-
-namespace std {
-	template<> struct hash<Vertex> {
-		size_t operator()(Vertex const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-};
-
-
 class Application {
 public:
-	Application(int w, int h) : window{ w, h } {
+	Application(std::string name, int w, int h) : window{name, w, h } {
 	}
 	~Application() { /*cleanup();*/ }
 
@@ -105,6 +54,7 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 
+	std::string Name;
 	Window window;
 
 	VkInstance instance{ VK_NULL_HANDLE };
@@ -202,30 +152,6 @@ private:
 	VkDescriptorPool imguiDescriptorPool;
 	float slider {90.0f};
 
-	bool checkValidationLayerSupport() {
-		uint32_t layerCount;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-		std::vector<VkLayerProperties> availableLayers(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		for (const char* layerName : validationLayers) {
-			bool layerFound = false;
-
-			for (const auto& layerProperties : availableLayers) {
-				if (strcmp(layerName, layerProperties.layerName) == 0) {
-					layerFound = true;
-					break;
-				}
-			}
-
-			if (!layerFound) {
-				return false;
-			}
-		}
-
-		return true;
-	}
 
 	void initVulkan() {
 		createInstance();
@@ -256,22 +182,10 @@ private:
 		createSyncObjects();
 	}
 
+	bool checkValidationLayerSupport();
 	void initImGui();
-
-	VkSampleCountFlagBits getMaxUsableSampleCount() {
-		VkPhysicalDeviceProperties physicalDeviceProperties;
-		vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-		if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
-		if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
-		if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
-		if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
-		if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
-		if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
-
-		return VK_SAMPLE_COUNT_1_BIT;
-	}
+	
+	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	void createColorResources() {
 		VkFormat colorFormat = swapChainImageFormat;
@@ -280,91 +194,7 @@ private:
 		colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 
-	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
-		VkFormatProperties formatProperties;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
-		
-		if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-			throw std::runtime_error("texture image format does not support linear blitting!");
-		}
-
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.image = image;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-		barrier.subresourceRange.levelCount = 1;
-
-		int32_t mipWidth = texWidth;
-		int32_t mipHeight = texHeight;
-
-		for (uint32_t i = 1; i < mipLevels; i++) {
-			barrier.subresourceRange.baseMipLevel = i - 1;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-				0, nullptr,
-				0, nullptr,
-				1, &barrier);
-
-			VkImageBlit blit{};
-			blit.srcOffsets[0] = { 0, 0, 0 };
-			blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-			blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blit.srcSubresource.mipLevel = i - 1;
-			blit.srcSubresource.baseArrayLayer = 0;
-			blit.srcSubresource.layerCount = 1;
-			blit.dstOffsets[0] = { 0, 0, 0 };
-			blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-			blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blit.dstSubresource.mipLevel = i;
-			blit.dstSubresource.baseArrayLayer = 0;
-			blit.dstSubresource.layerCount = 1;
-
-			vkCmdBlitImage(commandBuffer,
-				image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				1, &blit,
-				VK_FILTER_LINEAR);
-
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-				0, nullptr,
-				0, nullptr,
-				1, &barrier);
-
-			if (mipWidth > 1) mipWidth /= 2;
-			if (mipHeight > 1) mipHeight /= 2;
-		}
-
-		barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		endSingleTimeCommands(commandBuffer);
-	}
+	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 	void loadModel();
 
@@ -1346,21 +1176,7 @@ private:
 		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 	}
 
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
-		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-		for (const auto& extension : availableExtensions) {
-			requiredExtensions.erase(extension.extensionName);
-		}
-
-		return requiredExtensions.empty();
-	}
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
@@ -1473,7 +1289,7 @@ private:
 
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "tamcut";
+		appInfo.pApplicationName = Name.c_str();
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "No Engine";
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
