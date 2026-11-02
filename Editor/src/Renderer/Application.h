@@ -12,6 +12,7 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include "Window.h"
+#include "Vertex.h"
 
 #include <iostream>
 #include <vector>
@@ -25,69 +26,15 @@
 #include <fstream>
 #include <unordered_map>
 
-
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription{};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return bindingDescription;
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-		attributeDescriptions[0].binding = 0;
-		attributeDescriptions[0].location = 0;
-		attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-		attributeDescriptions[1].binding = 0;
-		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-		attributeDescriptions[2].binding = 0;
-		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-		return attributeDescriptions;
-	}
-
-	bool operator==(const Vertex& other) const {
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	}
-};
-
-namespace std {
-	template<> struct hash<Vertex> {
-		size_t operator()(Vertex const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-};
-
-
 class Application {
 public:
-	Application(int w, int h) : window{ w, h } {
+	Application(std::string name, int w, int h) : window{name, w, h } {
 	}
 	~Application() { /*cleanup();*/ }
 
 	void run() {
 		initVulkan();
 		initImGui();
-
-		ImGuiImageID = ImGui_ImplVulkan_AddTexture(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		mainLoop();
 		cleanup();
@@ -105,6 +52,7 @@ private:
 	const bool enableValidationLayers = true;
 #endif
 
+	std::string Name;
 	Window window;
 
 	VkInstance instance{ VK_NULL_HANDLE };
@@ -130,11 +78,8 @@ private:
 
 	//graphics pipeline
 	VkPipelineLayout pipelineLayout;
-	VkRenderPass renderPass;
 	VkPipeline graphicsPipeline;
 
-	//Frame buffer
-	std::vector<VkFramebuffer> swapChainFramebuffers;
 
 	//command buffer
 	VkCommandPool commandPool{};
@@ -145,7 +90,7 @@ private:
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 3; //for some reason changing this 2 -> 3 removes the semaphore issue
 	uint32_t currentFrame = 0;
 
 	//Vertex buffer
@@ -181,8 +126,6 @@ private:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-	VkDescriptorSet ImGuiImageID;
-
 	//Depth buffer
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
@@ -200,32 +143,9 @@ private:
 
 	//ImGUI
 	VkDescriptorPool imguiDescriptorPool;
+	VkDescriptorSet ImGuiImageID;
 	float slider {90.0f};
 
-	bool checkValidationLayerSupport() {
-		uint32_t layerCount;
-		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-		std::vector<VkLayerProperties> availableLayers(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		for (const char* layerName : validationLayers) {
-			bool layerFound = false;
-
-			for (const auto& layerProperties : availableLayers) {
-				if (strcmp(layerName, layerProperties.layerName) == 0) {
-					layerFound = true;
-					break;
-				}
-			}
-
-			if (!layerFound) {
-				return false;
-			}
-		}
-
-		return true;
-	}
 
 	void initVulkan() {
 		createInstance();
@@ -235,13 +155,11 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
-		createRenderPass();
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
 		createColorResources();
 		createDepthResources();
-		createFramebuffers();
 		createTextureImage();
 		createTextureImageView();
 		createTextureSampler();
@@ -256,22 +174,10 @@ private:
 		createSyncObjects();
 	}
 
+	bool checkValidationLayerSupport();
 	void initImGui();
-
-	VkSampleCountFlagBits getMaxUsableSampleCount() {
-		VkPhysicalDeviceProperties physicalDeviceProperties;
-		vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-		if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
-		if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
-		if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
-		if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
-		if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
-		if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
-
-		return VK_SAMPLE_COUNT_1_BIT;
-	}
+	
+	VkSampleCountFlagBits getMaxUsableSampleCount();
 
 	void createColorResources() {
 		VkFormat colorFormat = swapChainImageFormat;
@@ -280,91 +186,7 @@ private:
 		colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
 
-	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
-		VkFormatProperties formatProperties;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
-		
-		if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-			throw std::runtime_error("texture image format does not support linear blitting!");
-		}
-
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-		VkImageMemoryBarrier barrier{};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.image = image;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-		barrier.subresourceRange.levelCount = 1;
-
-		int32_t mipWidth = texWidth;
-		int32_t mipHeight = texHeight;
-
-		for (uint32_t i = 1; i < mipLevels; i++) {
-			barrier.subresourceRange.baseMipLevel = i - 1;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-				0, nullptr,
-				0, nullptr,
-				1, &barrier);
-
-			VkImageBlit blit{};
-			blit.srcOffsets[0] = { 0, 0, 0 };
-			blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-			blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blit.srcSubresource.mipLevel = i - 1;
-			blit.srcSubresource.baseArrayLayer = 0;
-			blit.srcSubresource.layerCount = 1;
-			blit.dstOffsets[0] = { 0, 0, 0 };
-			blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-			blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			blit.dstSubresource.mipLevel = i;
-			blit.dstSubresource.baseArrayLayer = 0;
-			blit.dstSubresource.layerCount = 1;
-
-			vkCmdBlitImage(commandBuffer,
-				image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				1, &blit,
-				VK_FILTER_LINEAR);
-
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-				0, nullptr,
-				0, nullptr,
-				1, &barrier);
-
-			if (mipWidth > 1) mipWidth /= 2;
-			if (mipHeight > 1) mipHeight /= 2;
-		}
-
-		barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		endSingleTimeCommands(commandBuffer);
-	}
+	void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 	void loadModel();
 
@@ -779,7 +601,6 @@ private:
 		createImageViews();
 		createColorResources();
 		createDepthResources();
-		createFramebuffers();
 	}
 
 	void cleanupSwapChain() {
@@ -790,10 +611,6 @@ private:
 		vkDestroyImageView(device, depthImageView, nullptr);
 		vkDestroyImage(device, depthImage, nullptr);
 		vkFreeMemory(device, depthImageMemory, nullptr);
-
-		for (auto framebuffer : swapChainFramebuffers) {
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
-		}
 
 		for (auto imageView : swapChainImageViews) {
 			vkDestroyImageView(device, imageView, nullptr);
@@ -819,7 +636,7 @@ private:
 				vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
 				vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 
-				throw std::runtime_error("failed to create synchronization objects for a frame!");
+					throw std::runtime_error("failed to create synchronization objects for a frame!");
 			}
 		}
 	}
@@ -840,6 +657,8 @@ private:
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
+	void DrawImGuiFrame();
+
 	void createCommandPool() {
 		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
@@ -850,104 +669,6 @@ private:
 
 		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create command pool!");
-		}
-	}
-
-	void createFramebuffers() {
-		swapChainFramebuffers.resize(swapChainImageViews.size());
-
-		for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-			std::array<VkImageView, 3> attachments = {
-				colorImageView,
-				depthImageView,
-				swapChainImageViews[i],
-			};
-
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-			framebufferInfo.pAttachments = attachments.data();
-			framebufferInfo.width = swapChainExtent.width;
-			framebufferInfo.height = swapChainExtent.height;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to create framebuffer!");
-			}
-		}
-	}
-
-	void createRenderPass() {
-		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = swapChainImageFormat;
-		colorAttachment.samples = msaaSamples;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentDescription colorAttachmentResolve{};
-		colorAttachmentResolve.format = swapChainImageFormat;
-		colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-		VkAttachmentDescription depthAttachment{};
-		depthAttachment.format = findDepthFormat();
-		depthAttachment.samples = msaaSamples;
-		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference colorAttachmentRef{};
-		colorAttachmentRef.attachment = 0;
-		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference colorAttachmentResolveRef{};
-		colorAttachmentResolveRef.attachment = 2;
-		colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-		VkAttachmentReference depthAttachmentRef{};
-		depthAttachmentRef.attachment = 1;
-		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-		VkSubpassDescription subpass{};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttachmentRef;
-		subpass.pDepthStencilAttachment = &depthAttachmentRef;
-		subpass.pResolveAttachments = &colorAttachmentResolveRef;
-
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass = 0;
-		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-		std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		renderPassInfo.pAttachments = attachments.data();
-		renderPassInfo.subpassCount = 1;
-		renderPassInfo.pSubpasses = &subpass;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies = &dependency;
-
-		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create render pass!");
 		}
 	}
 
@@ -1050,6 +771,13 @@ private:
 			throw std::runtime_error("failed to create pipeline layout!");
 		}
 
+		VkPipelineRenderingCreateInfo renderingInfo{};
+		renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		renderingInfo.colorAttachmentCount = 1;
+		renderingInfo.pColorAttachmentFormats = &swapChainImageFormat;
+		renderingInfo.depthAttachmentFormat = findDepthFormat();
+		renderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
 		VkGraphicsPipelineCreateInfo pipelineInfo{};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 		pipelineInfo.stageCount = 2;
@@ -1063,13 +791,16 @@ private:
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.layout = pipelineLayout;
-		pipelineInfo.renderPass = renderPass;
+		pipelineInfo.renderPass = VK_NULL_HANDLE;
 		pipelineInfo.subpass = 0;
+		pipelineInfo.pNext = &renderingInfo;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create graphics pipeline!");
 		}
+
+		std::cout << "Pipeline successfully created! Handle address: " << graphicsPipeline << std::endl;
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -1274,6 +1005,10 @@ private:
 			queueCreateInfos.push_back(queueCreateInfo);
 		}
 
+		VkPhysicalDeviceVulkan13Features df13{};
+		df13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		df13.dynamicRendering = VK_TRUE;
+
 		VkPhysicalDeviceFeatures deviceFeatures{};
 		deviceFeatures.samplerAnisotropy = VK_TRUE;
 		deviceFeatures.sampleRateShading = VK_TRUE; // enable sample shading feature for the device
@@ -1285,6 +1020,7 @@ private:
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
+		createInfo.pNext = &df13;
 
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -1346,21 +1082,7 @@ private:
 		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 	}
 
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
-		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-		for (const auto& extension : availableExtensions) {
-			requiredExtensions.erase(extension.extensionName);
-		}
-
-		return requiredExtensions.empty();
-	}
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
@@ -1473,7 +1195,7 @@ private:
 
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = "tamcut";
+		appInfo.pApplicationName = Name.c_str();
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "No Engine";
 		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -1527,8 +1249,6 @@ private:
 		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
-		
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1593,4 +1313,5 @@ private:
 	}
 
 	void cleanup();
+	void ImGuiCleanup();
 };
