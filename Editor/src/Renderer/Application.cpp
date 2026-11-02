@@ -67,6 +67,43 @@ void Application::initImGui() {
 	//info.CheckVkResultFn = check_vk_result;
 	ImGui_ImplVulkan_Init(&info);
 	
+	ImGuiImageID = ImGui_ImplVulkan_AddTexture(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+void Application::DrawImGuiFrame() {
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+
+	ImGui::NewFrame();
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("File")) {
+			if (ImGui::MenuItem("New", "Ctrl+N")) {}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {} // Disabled item
+			ImGui::Separator();
+			if (ImGui::MenuItem("Cut", "Ctrl+X")) {}
+			if (ImGui::MenuItem("Copy", "Ctrl+C")) {}
+			if (ImGui::MenuItem("Paste", "Ctrl+V")) {}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+
+	//ImGui::DockSpaceOverViewport();
+	//ImGui::DockSpace(ImGui::GetID("Dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
+	//ImGui::DockSpace(,,);
+
+	ImGui::Begin("Hello ImGUI");
+	ImGui::SliderFloat("Speed", &slider, 0.1f, 360.0f);
+	ImGui::End();
+
+	ImGui::Begin("Images");
+	ImGui::Image((ImTextureID)ImGuiImageID, ImVec2(1024, 1024));
+	ImGui::End();
 }
 
 void Application::loadModel() {
@@ -258,41 +295,8 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-
 	// Start the Dear ImGui frame
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-
-	ImGui::NewFrame();
-	if (ImGui::BeginMainMenuBar()) {
-		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New", "Ctrl+N")) {}
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Edit"))
-		{
-			if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {} // Disabled item
-			ImGui::Separator();
-			if (ImGui::MenuItem("Cut", "Ctrl+X")) {}
-			if (ImGui::MenuItem("Copy", "Ctrl+C")) {}
-			if (ImGui::MenuItem("Paste", "Ctrl+V")) {}
-			ImGui::EndMenu();
-		}
-		ImGui::EndMainMenuBar();
-	}
-
-	//ImGui::DockSpaceOverViewport();
-	//ImGui::DockSpace(ImGui::GetID("Dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
-	//ImGui::DockSpace(,,);
-	
-	ImGui::Begin("Hello ImGUI");
-	ImGui::SliderFloat("Speed", &slider, 0.1f, 360.0f);
-	ImGui::End();
-
-	ImGui::Begin("Images");
-	ImGui::Image((ImTextureID)ImGuiImageID, ImVec2(1024, 1024));
-	ImGui::End();
+	DrawImGuiFrame();
 
 	// Rendering
 	ImGui::Render();
@@ -474,11 +478,17 @@ VkSampleCountFlagBits Application::getMaxUsableSampleCount() {
 	return VK_SAMPLE_COUNT_1_BIT;
 }
 
-void Application::cleanup() {
+void Application::ImGuiCleanup() {
 
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+
+}
+
+void Application::cleanup() {
+
+	ImGuiCleanup();
 
 	vkDestroyDescriptorPool(device, imguiDescriptorPool, nullptr);
 

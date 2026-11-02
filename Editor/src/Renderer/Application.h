@@ -36,8 +36,6 @@ public:
 		initVulkan();
 		initImGui();
 
-		ImGuiImageID = ImGui_ImplVulkan_AddTexture(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
 		mainLoop();
 		cleanup();
 	}
@@ -95,7 +93,7 @@ private:
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 3; //for some reason changing this 2 -> 3 removes the semaphore issue
 	uint32_t currentFrame = 0;
 
 	//Vertex buffer
@@ -131,8 +129,6 @@ private:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-	VkDescriptorSet ImGuiImageID;
-
 	//Depth buffer
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
@@ -150,6 +146,7 @@ private:
 
 	//ImGUI
 	VkDescriptorPool imguiDescriptorPool;
+	VkDescriptorSet ImGuiImageID;
 	float slider {90.0f};
 
 
@@ -649,7 +646,7 @@ private:
 				vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
 				vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 
-				throw std::runtime_error("failed to create synchronization objects for a frame!");
+					throw std::runtime_error("failed to create synchronization objects for a frame!");
 			}
 		}
 	}
@@ -669,6 +666,8 @@ private:
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
+	void DrawImGuiFrame();
 
 	void createCommandPool() {
 		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
@@ -1409,4 +1408,5 @@ private:
 	}
 
 	void cleanup();
+	void ImGuiCleanup();
 };
