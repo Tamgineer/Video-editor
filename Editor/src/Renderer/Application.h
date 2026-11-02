@@ -1250,8 +1250,6 @@ private:
 
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-		
-
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
