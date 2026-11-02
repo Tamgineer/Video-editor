@@ -85,6 +85,7 @@ void Application::DrawImGuiFrame() {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New", "Ctrl+N")) {}
+			if (ImGui::MenuItem("Open")){}
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Edit"))
@@ -97,18 +98,28 @@ void Application::DrawImGuiFrame() {
 			if (ImGui::MenuItem("Paste", "Ctrl+V")) {}
 			ImGui::EndMenu();
 		}
+		if (ImGui::BeginMenu("Plugins")) {
+			if (ImGui::MenuItem("Todo: Plugins", "pluginit")) {}
+			ImGui::EndMenu();
+		}
 		ImGui::EndMainMenuBar();
 	}
 
-	//ImGui::DockSpaceOverViewport();
+	ImGui::DockSpaceOverViewport();
 	//ImGui::DockSpace(ImGui::GetID("Dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
 	//ImGui::DockSpace(,,);
+	
+	ImGui::Begin("Media pool");
+	ImGui::End();
 
-	ImGui::Begin("Hello ImGUI");
+	ImGui::Begin("Properties");
+	ImGui::End();
+
+	ImGui::Begin("Timeline");
 	ImGui::SliderFloat("Speed", &slider, 0.1f, 360.0f);
 	ImGui::End();
 
-	ImGui::Begin("Images");
+	ImGui::Begin("Video");
 	ImGui::Image((ImTextureID)ImGuiImageID, ImVec2(1024, 1024));
 	ImGui::End();
 }
