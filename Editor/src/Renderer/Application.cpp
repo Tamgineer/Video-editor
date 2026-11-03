@@ -84,8 +84,15 @@ void Application::DrawImGuiFrame() {
 	ImGui::NewFrame();
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New", "Ctrl+N")) {}
+			if (ImGui::MenuItem("New Project", "Ctrl+N")) {}
 			if (ImGui::MenuItem("Open")){}
+			if (ImGui::BeginMenu("Open Recents")) {
+				//for loop on all recent files.
+				if (ImGui::MenuItem("MyProject", "../")) { /* Open said project */ }
+				if (ImGui::MenuItem("MyProject1", "../")) {}
+				if (ImGui::MenuItem("MyProject2", "../")) {}
+				ImGui::EndMenu();
+			}
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Edit"))
@@ -102,13 +109,17 @@ void Application::DrawImGuiFrame() {
 			if (ImGui::MenuItem("Todo: Plugins", "pluginit")) {}
 			ImGui::EndMenu();
 		}
+		if (ImGui::BeginMenu("About")) {
+			if(ImGui::MenuItem("About")){}
+			ImGui::EndMenu();
+		}
 		ImGui::EndMainMenuBar();
 	}
 
-	ImGui::DockSpaceOverViewport();
-	//ImGui::DockSpace(ImGui::GetID("Dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode, nullptr);
-	//ImGui::DockSpace(,,);
-	
+	//ImGui::DockSpaceOverViewport();
+	ImGui::GetMainViewport();
+	ImGui::DockSpaceOverViewport(ImGui::GetWindowDockID(), ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
 	ImGui::Begin("Media pool");
 	ImGui::End();
 
