@@ -1,3 +1,5 @@
 Version=0.1
+name=MyProject
 Width=400
 Height=400
+FPS=24

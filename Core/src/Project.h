@@ -1,5 +1,6 @@
 #pragma once
 #include <fstream>
+#include <filesystem>
 #include "NotImplemented.h"
 
 extern "C" {
@@ -180,8 +181,19 @@ public:
             std::cerr << "Filepath not specified";
             return 1;
         }
+        std::string p = Filepath + Name + ".tc";
 
-        ProjectFile = std::fstream{ Filepath, std::ios::in | std::ios::out };
+        //I don't know if making a project file if it doesn't exist
+        //is a good responsibility for the save function, or if we
+        //should give the responsibility to the editor?
+        if (!std::filesystem::exists(p)) {
+            std::cerr << "Filepath doesn't exist, making a new file...\n";
+            std::ofstream temp{ p };
+            temp.close();
+            //return -1;
+        }
+
+        ProjectFile = std::fstream{ p , std::ios::in | std::ios::out};
 
         if (!ProjectFile) {
             std::cerr << "Filepath could not be used for writing\n";
@@ -189,6 +201,7 @@ public:
         }
 
         ProjectFile << "Version=0.1\n";
+        ProjectFile << "name="    << Name   << "\n";
         ProjectFile << "Width="  << WIDTH  << "\n";
         ProjectFile << "Height=" << HEIGHT << "\n";
         ProjectFile << "FPS="    << FPS    << "\n";
@@ -199,9 +212,21 @@ public:
         Filepath = path;
     }
 
+    void SetName(std::string name) {
+        Name = name;
+    }
+
 	void SetFPS(int fps) {
 		FPS = { fps };
 	}
+
+    void PrintProperties() {
+        std::cout << Name << "\n"
+            << " width:  " << WIDTH << "\n"
+            << " height: " << HEIGHT << "\n"
+            << " fps:    " << FPS << "\n"
+        ;
+    }
 private:
 	//TODO: return error codes
 	int Load(std::string path) {
@@ -212,9 +237,30 @@ private:
             return 1;
         }
         std::string str{};
-        while(std::getline(ProjectFile, str))
-        std::cout << str << "\n";
+        while (std::getline(ProjectFile, str))
+            Interperate(str);
 
         return 0;
+    }
+
+    void Interperate(std::string str) {
+        auto index = str.find("=");
+        std::string s{ str.substr(0, index) };
+        std::string t{ str.substr(index + 1, str.length()) };
+        if (s == "name") {
+            Name = t;
+        }
+
+        if (s == "width") {
+            WIDTH = std::stoi(t);
+        }
+
+        if (s == "height") {
+            WIDTH = std::stoi(t);
+        }
+
+        if (s == "fps") {
+            WIDTH = std::stoi(t);
+        }
     }
 };
