@@ -9,7 +9,6 @@ void CreateNewProjectExample() {
 	//NB: dialogue to overwrite
 	p.SetFilepath("../Example/");
 	p.Save();
-	//p.Render("../Example/MyProject.mp4");
 }
 
 void LoadExistingProjectExample() {

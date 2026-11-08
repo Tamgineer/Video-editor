@@ -7,17 +7,19 @@ public:
 	int WIDTH{};
 	int HEIGHT{};
 	double DURATION{};
-	double s_timestamp{};
-	double e_timestamp{};
+	double s_timestamp{}; //starrt
+	double e_timestamp{}; //end
 	double fps{};
 
-	ITrack(std::string name) : Name(name) {}
+	ITrack() {
+	
+	}
 
 	//this is a dummy function, in the future
 	//we'll make it return an image for our frame
 	//NB: Oh and make sure it's virtual
-	void Display() {
-
+	uint8_t GetFrameData() {
+		return 0;
 	}
 
 	void Split() {

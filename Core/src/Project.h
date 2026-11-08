@@ -20,10 +20,10 @@ public:
 	int HEIGHT{};
 	std::string Filepath;
     std::fstream ProjectFile;
+
+    ITrack track{};
 	//mediapool
 	//timeline
-
-	//Let's pretend that the fstream is our video output for the time being.
 
 	//if the project already exists somewhere
 	Project(std::string path) : Filepath(path) {
